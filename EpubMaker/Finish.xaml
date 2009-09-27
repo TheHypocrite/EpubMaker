@@ -1,0 +1,17 @@
+﻿<Page x:Class="EpubMaker.Finish"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Finish">
+	<StackPanel>
+		<TextBlock Margin="5">
+			Congratulations, you have created your EPUB document.<LineBreak/>
+			Would you like to:
+		</TextBlock>
+		<StackPanel Margin="5">
+			<CheckBox Name="chkOpenDoc" Margin="3">
+				<TextBlock>Open the document, or</TextBlock>
+			</CheckBox>
+			<CheckBox Name="chkOpenFolder" Margin="3">Open the containing folder?</CheckBox>
+		</StackPanel>
+	</StackPanel>
+</Page>

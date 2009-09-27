@@ -1,0 +1,13 @@
+﻿<Page x:Class="EpubMaker.Style"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Style">
+	<DockPanel>
+		<Label TextBlock.Foreground="#003399" TextBlock.FontSize="12pt" DockPanel.Dock="Top">
+			Customize CSS:
+		</Label>
+		<TextBox MaxLines="999" FontFamily="Consolas" Name="txtStyle" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+				 Text="body {&#10;&#9;font-family: Constantia, Palatino Linotype, fantasy;&#10;}&#10;p {&#10;&#9;margin: 0;&#10;&#9;margin-bottom: 0.5em;&#10;&#9;text-indent: 1.5em;&#10;}&#x0a;h1,h2,h3 {&#10;&#9;page-break-before: always;&#10;}&#10;">
+		</TextBox>
+	</DockPanel>
+</Page>

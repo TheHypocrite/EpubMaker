@@ -1,0 +1,23 @@
+﻿<Page x:Class="EpubMaker.Toc"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Toc">
+	<DockPanel>
+		<Label TextBlock.Foreground="#003399" TextBlock.FontSize="12pt" DockPanel.Dock="Top">
+			Table of contents
+		</Label>
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+			<CheckBox Name="chkToc" VerticalAlignment="Center" Click="chkToc_Click">Generate table of contents</CheckBox>
+			<ComboBox Name="ddlLevels" Margin="1" SelectionChanged="ddlLevels_SelectionChanged">
+				<ComboBoxItem IsSelected="True">1</ComboBoxItem>
+				<ComboBoxItem>2</ComboBoxItem>
+				<ComboBoxItem>3</ComboBoxItem>
+			</ComboBox>
+			<Label>levels deep</Label>
+		</StackPanel>
+		<GroupBox Header="Preview">
+		<TreeView Name="tvToc">
+		</TreeView>
+		</GroupBox>
+	</DockPanel>
+</Page>

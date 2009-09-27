@@ -1,0 +1,24 @@
+﻿<Page x:Class="EpubMaker.Metadata"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Metadata">
+	<StackPanel Height="299" Width="351">
+		<Label TextBlock.Foreground="#003399" TextBlock.FontSize="12pt">
+			Enter the document metatada:
+		</Label>
+		<Grid>
+			<Grid.RowDefinitions>
+				<RowDefinition></RowDefinition>
+				<RowDefinition></RowDefinition>
+			</Grid.RowDefinitions>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="75"></ColumnDefinition>
+				<ColumnDefinition></ColumnDefinition>
+			</Grid.ColumnDefinitions>
+			<Label Grid.Row="0" Grid.Column="0">Author:</Label>
+			<TextBox Grid.Row="0" Grid.Column="1" Name="txtAuthor" GotFocus="TextboxGotFocus"></TextBox>
+			<Label Grid.Row="1" Grid.Column="0">Title:</Label>
+			<TextBox Grid.Row="1" Grid.Column="1" Name="txtTitle" GotFocus="TextboxGotFocus"></TextBox>
+		</Grid>
+	</StackPanel>
+</Page>
