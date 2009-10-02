@@ -18,6 +18,9 @@ namespace EpubMaker
 		public string FilePath;
 		public string NewPath;
 		public string MediaType { get; protected set; }
+        public string Id;
+
+        public XmlElement ContentNode;
 	}
 
 	public class HtmlFileInfo : FileInfo
@@ -81,8 +84,8 @@ namespace EpubMaker
 	public class BookInfo
 	{
 		public readonly List<FileInfo> Files = new List<FileInfo>();
-		private XmlNamespaceManager tocNsmgr;
-		private XmlDocument toc;
+		private XmlNamespaceManager contentNsmgr;
+		private XmlDocument content;
 		private string destinationName;
 		private string ncxFileName;
 		private int fileCounter;
@@ -115,15 +118,15 @@ namespace EpubMaker
 			}
 		}
 
-		public XmlDocument Toc
+		public XmlDocument Content
 		{
-			get { return toc; }
+			get { return content; }
 			set
 			{
-				toc = value;
-				tocNsmgr = new XmlNamespaceManager(toc.NameTable);
-				tocNsmgr.AddNamespace("dc", "http://purl.org/dc/elements/1.1/");
-				tocNsmgr.AddNamespace("opf", "http://www.idpf.org/2007/opf");
+				content = value;
+				contentNsmgr = new XmlNamespaceManager(content.NameTable);
+				contentNsmgr.AddNamespace("dc", "http://purl.org/dc/elements/1.1/");
+				contentNsmgr.AddNamespace("opf", "http://www.idpf.org/2007/opf");
 			}
 		}
 
@@ -133,7 +136,7 @@ namespace EpubMaker
 			set
 			{
 				destinationName = value;
-				var body = (XmlElement) toc.SelectSingleNode("//opf:item[@id='body']", tocNsmgr);
+				var body = (XmlElement) content.SelectSingleNode("//opf:item[@id='body']", contentNsmgr);
 				body.SetAttribute("href", destinationName);
 			}
 		}
@@ -144,7 +147,7 @@ namespace EpubMaker
 			set
 			{
 				ncxFileName = value;
-				var ncx = (XmlElement)toc.SelectSingleNode("//opf:item[@id='ncx']", tocNsmgr);
+				var ncx = (XmlElement)content.SelectSingleNode("//opf:item[@id='ncx']", contentNsmgr);
 				ncx.SetAttribute("href", destinationName);
 			}
 		}
@@ -152,14 +155,26 @@ namespace EpubMaker
 		public void AddFile(FileInfo fileInfo)
 		{
 			Files.Add(fileInfo);
+            fileInfo.Id = string.Format("file{0}", ++fileCounter);
 
-			var manifestNode = toc.SelectSingleNode("//opf:manifest", tocNsmgr);
-			var imageItem = (XmlElement) toc.CreateNode(XmlNodeType.Element, "item", tocNsmgr.LookupNamespace("opf"));
+			var manifestNode = content.SelectSingleNode("//opf:manifest", contentNsmgr);
+			var imageItem = (XmlElement) content.CreateNode(XmlNodeType.Element, "item", contentNsmgr.LookupNamespace("opf"));
 			manifestNode.AppendChild(imageItem);
-			imageItem.SetAttribute("href", fileInfo.FilePath);
-			imageItem.SetAttribute("id", string.Format("file{0}", ++fileCounter));
+			imageItem.SetAttribute("href", fileInfo.NewPath);
+			imageItem.SetAttribute("id", fileInfo.Id);
 			imageItem.SetAttribute("media-type", fileInfo.MediaType);
+
+            fileInfo.ContentNode = imageItem;
 		}
+
+        public void AddSpineEntry(FileInfo fileInfo)
+        {
+            var spine = content.SelectSingleNode("//opf:spine", contentNsmgr);
+            var spineEntry = (XmlElement)content.CreateNode(XmlNodeType.Element, "itemref", contentNsmgr.LookupNamespace("opf"));
+            spine.AppendChild(spineEntry);
+
+            spineEntry.SetAttribute("idref", fileInfo.Id);
+        }
 
 		public List<FileInfo> GetFilesByMime(string mediaType)
 		{
@@ -170,11 +185,11 @@ namespace EpubMaker
 
 		private void SetMetadata(string attribute, string value)
 		{
-			var parentNode = toc.SelectSingleNode("//opf:metadata", tocNsmgr);
-			var node = parentNode.SelectSingleNode("//" + attribute, tocNsmgr);
+			var parentNode = content.SelectSingleNode("//opf:metadata", contentNsmgr);
+			var node = parentNode.SelectSingleNode("//" + attribute, contentNsmgr);
 			if (node == null)
 			{
-				node = toc.CreateNode(XmlNodeType.Element, attribute, tocNsmgr.LookupNamespace("dc"));
+				node = content.CreateNode(XmlNodeType.Element, attribute, contentNsmgr.LookupNamespace("dc"));
 				parentNode.AppendChild(node);
 			}
 
@@ -183,7 +198,7 @@ namespace EpubMaker
 			{
 				node.RemoveChild(textNode);
 			}
-			node.AppendChild(toc.CreateTextNode(value));
+			node.AppendChild(content.CreateTextNode(value));
 		}
 
 		#endregion

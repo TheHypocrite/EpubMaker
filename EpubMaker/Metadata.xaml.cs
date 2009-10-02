@@ -33,29 +33,32 @@ namespace EpubMaker
 			}
 
 			var head = (XmlElement) xhtml.SelectSingleNode("//ns:head", nsmgr);
-			// Document title
-			var title = (XmlElement) head.SelectSingleNode("//ns:title", nsmgr);
-			if (title != null && !string.IsNullOrEmpty(title.InnerText))
-			{
-				bookInfo.Title = title.InnerText;
-			}
+            if (head != null)
+            {
+                // Document title
+                var title = (XmlElement)head.SelectSingleNode("//ns:title", nsmgr);
+                if (title != null && !string.IsNullOrEmpty(title.InnerText))
+                {
+                    bookInfo.Title = title.InnerText;
+                }
 
-			// DC metadata
-			var link = (XmlElement) xhtml.SelectSingleNode("//ns:link[starts-with(translate(@href,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'http://purl.org/dc/elements/')]", nsmgr);
-			if (link != null)
-			{
-				var prefix = link.GetAttribute("rel").Remove(0, 7).ToLower();
-				title = (XmlElement)head.SelectSingleNode(string.Format("//ns:meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='{0}.title']", prefix), nsmgr);
-				if (title != null)
-				{
-					bookInfo.Title = title.GetAttribute("content");
-				}
-				var author = (XmlElement)head.SelectSingleNode(string.Format("//ns:meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='{0}.creator']", prefix), nsmgr);
-				if (author != null)
-				{
-					bookInfo.Author = author.GetAttribute("content");
-				}
-			}
+                // DC metadata
+                var link = (XmlElement)xhtml.SelectSingleNode("//ns:link[starts-with(translate(@href,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'http://purl.org/dc/elements/')]", nsmgr);
+                if (link != null)
+                {
+                    var prefix = link.GetAttribute("rel").Remove(0, 7).ToLower();
+                    title = (XmlElement)head.SelectSingleNode(string.Format("//ns:meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='{0}.title']", prefix), nsmgr);
+                    if (title != null)
+                    {
+                        bookInfo.Title = title.GetAttribute("content");
+                    }
+                    var author = (XmlElement)head.SelectSingleNode(string.Format("//ns:meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='{0}.creator']", prefix), nsmgr);
+                    if (author != null)
+                    {
+                        bookInfo.Author = author.GetAttribute("content");
+                    }
+                }
+            }
 
 			txtAuthor.Text = bookInfo.Author;
 			txtTitle.Text = bookInfo.Title;

@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Xml;
+using ICSharpCode.SharpZipLib.Zip;
 using Path=System.IO.Path;
 
 namespace EpubMaker
@@ -42,57 +43,43 @@ namespace EpubMaker
 			Directory.CreateDirectory(tempDir);
 			Directory.SetCurrentDirectory(tempDir);
 
-			// mimetype
-			var file = new StreamWriter("mimetype");
-			file.Write("application/epub+zip");
-			file.Close();
+            var encoding = new UTF8Encoding();
 
-			var startInfo = new ProcessStartInfo()
-			           	{
-			           		FileName = "zip",
-			           		Arguments = string.Format("-q0X \"{0}\" mimetype", bookInfo.Destination),
-			           		WindowStyle = ProcessWindowStyle.Hidden
-			           	};
-			var p = Process.Start(startInfo);
-			if (p != null)
-			{
-				p.WaitForExit();
-			}
+            var stream = new ZipOutputStream(File.Create(bookInfo.Destination));
+            stream.SetLevel(0);
+
+            stream.PutNextEntry(new ZipEntry("mimetype"));
+
+            // mimetype
+            var file = new StreamWriter(stream, Encoding.UTF8);
+            file.Write("application/epub+zip");
+            file.Flush();
+
+            stream.SetLevel(9);
 
 			// meta-inf
-			try
-			{
-				Directory.Delete("META-INF", true);
-			}
-			catch (Exception) { }
-			Directory.CreateDirectory("META-INF");
-			var writer = new StreamWriter("META-INF/container.xml", false, Encoding.UTF8);
-			writer.WriteLine(
+            stream.PutNextEntry(new ZipEntry("META-INF/container.xml"));
+			file = new StreamWriter(stream, Encoding.UTF8);
+            file.WriteLine(
 @"<?xml version='1.0' ?>
 <container version='1.0' xmlns='urn:oasis:names:tc:opendocument:xmlns:container'>
 	<rootfiles>
 		<rootfile full-path='OEBPS/content.opf' media-type='application/oebps-package+xml'/>
 	</rootfiles>
 </container>");
-			writer.Close();
+            file.Flush();
 
 			var sourceBareName = Path.GetFileNameWithoutExtension(bookInfo.Source);
 			var sourceName = Path.GetFileName(bookInfo.Source);
 			var sourcePath = Path.GetDirectoryName(bookInfo.Source);
 
 			// oebps
-			try
-			{
-				Directory.Delete("OEBPS", true);
-			}
-			catch (Exception) { }
-			Directory.CreateDirectory("OEBPS");
-
 			var uniqueIdentifier = "ISBN...";
 
 			// toc
 			var ncxFileName = "toc.ncx";
-			var xmlWriter = new XmlTextWriter("OEBPS/" + ncxFileName, Encoding.UTF8) {Formatting = Formatting.Indented};
+            stream.PutNextEntry(new ZipEntry("OEBPS/" + ncxFileName));
+			var xmlWriter = new XmlTextWriter(stream, Encoding.UTF8) {Formatting = Formatting.Indented};
 			var tocDoc = new XmlDocument();
 			tocDoc.LoadXml(
 @"<?xml version='1.0'?>
@@ -118,14 +105,14 @@ namespace EpubMaker
 	</navMap>
 </ncx>");
 			tocDoc.WriteContentTo(xmlWriter);
-			xmlWriter.Close();
+			xmlWriter.Flush();
 
 			string destinationName = sourceBareName + ".html";
 			bookInfo.DestinationName = destinationName;
 			bookInfo.NcxFileName = ncxFileName;
 
 			// content
-			var contentDoc = bookInfo.Toc;
+			var contentDoc = bookInfo.Content;
 
 			// Metadata
 			var nsmgr = new XmlNamespaceManager(contentDoc.NameTable);
@@ -135,7 +122,7 @@ namespace EpubMaker
 			var manifestNode = contentDoc.SelectSingleNode("//opf:manifest", nsmgr);
 
 			// Images
-			Directory.CreateDirectory("OEBPS/img");
+			// Directory.CreateDirectory("OEBPS/img");
 			var images = bookInfo.Files.FindAll(x => Regex.IsMatch(x.MediaType, "image/"));
 			foreach (var image in images)
 			{
@@ -178,29 +165,40 @@ namespace EpubMaker
 			//style.Close();
 
 			// content.opf
-			xmlWriter = new XmlTextWriter("OEBPS/content.opf", Encoding.UTF8) { Formatting = Formatting.Indented };
+            stream.PutNextEntry(new ZipEntry("OEBPS/content.opf"));
+			xmlWriter = new XmlTextWriter(stream, Encoding.UTF8) { Formatting = Formatting.Indented };
 			contentDoc.WriteContentTo(xmlWriter);
-			xmlWriter.Close();
+			xmlWriter.Flush();
 
-			// Finally, the document
-			xmlWriter = new XmlTextWriter("OEBPS/" + destinationName, Encoding.UTF8)
-			            	{
-			            		Formatting = Formatting.Indented,
-			            		IndentChar = '\t',
-			            		Indentation = 1
-			            	};
-			bookInfo.Document.WriteContentTo(xmlWriter);
-			xmlWriter.Close();
+            // Finally, the documents
+            foreach (var fileInfo in bookInfo.Files)
+            {
+                var htmlInfo = fileInfo as HtmlFileInfo;
+                if (htmlInfo == null)
+                    continue;
 
-			startInfo.Arguments = string.Format("-r \"{0}\" META-INF OEBPS", bookInfo.Destination);
-			p = Process.Start(startInfo);
-			if (p != null)
-			{
-				p.WaitForExit();
-			}
-			Directory.SetCurrentDirectory(prevDir);
+                stream.PutNextEntry(new ZipEntry("OEBPS/" + htmlInfo.NewPath));
+                xmlWriter = new XmlTextWriter(stream, Encoding.UTF8)
+                {
+                    Formatting = Formatting.Indented,
+                    IndentChar = '\t',
+                    Indentation = 1
+                };
+                htmlInfo.Document.WriteContentTo(xmlWriter);
+                xmlWriter.Flush();
+            }
 
-			Directory.Delete(tempDir, true);
+            stream.Close();
+
+            //startInfo.Arguments = string.Format("-r \"{0}\" META-INF OEBPS", bookInfo.Destination);
+            //p = Process.Start(startInfo);
+            //if (p != null)
+            //{
+            //    p.WaitForExit();
+            //}
+            //Directory.SetCurrentDirectory(prevDir);
+
+            //Directory.Delete(tempDir, true);
 
 			Cursor = Cursors.Arrow;
 		}

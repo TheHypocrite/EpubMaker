@@ -57,11 +57,16 @@ namespace EpubMaker
 			DestinationFile = Path.GetDirectoryName(SourceFile) + "\\" + Path.GetFileNameWithoutExtension(SourceFile) + ".epub";
 			txtDestination.Text = DestinationFile;
 
-			if (StateChanged != null)
-			{
-				StateChanged(this, new StateChangeArgs { Description = "Ready", State = States.Ready});
-			}
+            ChangeState("Ready", States.Ready);
 		}
+
+        private void ChangeState(string description, States state)
+        {
+            if (StateChanged != null)
+            {
+                StateChanged(this, new StateChangeArgs { Description = description, State = state });
+            }
+        }
 
 		private void OnChooseDestination(object sender, RoutedEventArgs e)
 		{
@@ -76,10 +81,10 @@ namespace EpubMaker
 				DestinationFile = saveDialog.FileName;
 			}
 
-			if (CanProceed && StateChanged != null)
-			{
-				StateChanged(this, new StateChangeArgs() { Description = "Ready", State = States.Ready});
-			}
+			if (CanProceed)
+            {
+                ChangeState("Ready", States.Ready);
+            }
 		}
 
 		public event StateEventHandler StateChanged;
@@ -107,16 +112,16 @@ namespace EpubMaker
 
 			Mouse.OverrideCursor = null;
 
-			if (CanProceed && StateChanged != null)
-			{
-				StateChanged(this, new StateChangeArgs { Description = "Ready", State = States.Ready });
-			}
+            if (CanProceed)
+            {
+                ChangeState("Ready", States.Ready);
+            }
 		}
 
 		private void LoadOpf(BookInfo bookInfo)
 		{
-			bookInfo.Toc = new XmlDocument();
-			bookInfo.Toc.Load(SourceFile);
+			bookInfo.Content = new XmlDocument();
+			bookInfo.Content.Load(SourceFile);
 
 			throw new NotImplementedException();
 		}
@@ -132,10 +137,10 @@ namespace EpubMaker
 					StateChanged(this, new StateChangeArgs() { Description = "Loading document..." });
 				}
 				document.Load(SourceFile);
-				if (document.DocumentElement.NamespaceURI != "http://www.w3.org/1999/xhtml")
-				{
-					throw new Exception("Invalid XHTML");
-				}
+                //if (document.DocumentElement.NamespaceURI != "http://www.w3.org/1999/xhtml")
+                //{
+                //    throw new Exception("Invalid XHTML");
+                //}
 
 				sourceReady = true;
 				txtSource.Text = SourceFile;
@@ -143,27 +148,14 @@ namespace EpubMaker
 			catch (Exception)
 			{
 				// It's not a valid XHTML file. Try converting it via html-tidy
-				string convertedFile = Path.GetTempFileName();
 
-				if (StateChanged != null)
-				{
-					StateChanged(this, new StateChangeArgs() { Description = "Converting to XHTML..." });
-				}
-				var p = Process.Start(new ProcessStartInfo()
-				                      	{
-				                      		FileName = "tidy",
-				                      		Arguments =
-				                      			string.Format("-o \"{0}\" -w 0 -c -asxml --doctype strict --anchor-as-name no --drop-proprietary-attributes yes --enclose-text yes -ascii -q \"{1}\"", convertedFile, SourceFile),
-				                      		WindowStyle = ProcessWindowStyle.Hidden
-				                      	});
-				p.WaitForExit();
+                ChangeState("Converting to XHTML...", States.Working);
 
-				if (p.ExitCode < 2)
-				{
-					if (StateChanged != null)
-					{
-						StateChanged(this, new StateChangeArgs() { Description = "Loading XHTML..." });
-					}
+                try
+                {
+                    string convertedFile = ConvertXhtml();
+
+                    ChangeState("Loading XHTML...", States.Working);
 
 					txtSource.Text = SourceFile;
 					RealSourceFile = convertedFile;
@@ -171,18 +163,15 @@ namespace EpubMaker
 					File.Delete(convertedFile);
 					sourceReady = true;
 				}
-				else
+                catch (Exception ex)
 				{
-					if (StateChanged != null)
-					{
-						StateChanged(this, new StateChangeArgs() { Description = "XHTML conversion failed" });
-					}
+                    ChangeState("XHTML conversion failed", States.Working);
 
 					MessageBox.Show("XHTML conversion failed", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 				}
 			}
-			bookInfo.Toc = new XmlDocument();
-			bookInfo.Toc.LoadXml(
+			bookInfo.Content = new XmlDocument();
+			bookInfo.Content.LoadXml(
 				@"<?xml version='1.0' ?>
 <package version='2.0' xmlns='http://www.idpf.org/2007/opf' unique-identifier='BookId'>
 <metadata xmlns:dc='http://purl.org/dc/elements/1.1/' xmlns:opf='http://www.idpf.org/2007/opf'>
@@ -191,20 +180,38 @@ namespace EpubMaker
 	<dc:type>Text</dc:type>
 </metadata>
 <manifest>
-	<item id='body' href='' media-type='application/xhtml+xml'/>
 	<item id='ncx' href='' media-type='application/x-dtbncx+xml'/>
 </manifest>
-<spine toc='ncx'>
-	<itemref idref='body'/>
-</spine>
+<spine toc='ncx' />
 </package>");
 
 			bookInfo.Source = SourceFile;
 			bookInfo.RealSource = RealSourceFile;
 			bookInfo.Destination = DestinationFile;
 
-			bookInfo.AddFile(new HtmlFileInfo {Document = document, FilePath = SourceFile});
+            var file = new HtmlFileInfo {Document = document, FilePath = RealSourceFile, NewPath = Path.GetFileName(SourceFile)};
+			
+            bookInfo.AddFile(file);
+            bookInfo.AddSpineEntry(file);
 		}
+
+        private string ConvertXhtml()
+        {
+            var convertedFile = Path.GetTempFileName();
+
+            var p = Process.Start(new ProcessStartInfo()
+            {
+                FileName = "tidy",
+                Arguments =
+                    string.Format("-o \"{0}\" -w 0 -c -asxml --doctype strict --anchor-as-name no --drop-proprietary-attributes yes --enclose-text yes -ascii -q \"{1}\"", convertedFile, SourceFile),
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+            p.WaitForExit();
+            if (p.ExitCode >= 2)
+                throw new Exception("Conversion failed.");
+                
+            return convertedFile;
+        }
 
 		private SourceType GetSourceType(string file)
 		{
